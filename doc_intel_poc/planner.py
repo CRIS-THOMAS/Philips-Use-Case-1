@@ -67,10 +67,11 @@ class Planner:
         revised = list(remaining)
         analysis = state.get("analysis", {})
 
-        # If analysis found zero question candidates, drop extraction.
+        # If analysis found no question candidates, drop extraction.
+        min_question_score = 1
         if "extract_questions" in revised:
             score = analysis.get("question_candidate_score")
-            if score is not None and score == 0:
+            if score is not None and score < min_question_score:
                 revised.remove("extract_questions")
                 logger.info(
                     "Revised plan: removed 'extract_questions' (score=0)"

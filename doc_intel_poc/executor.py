@@ -10,6 +10,8 @@ from doc_intel_poc.registry import ToolRegistry
 
 logger = logging.getLogger(__name__)
 
+# Safety limit to prevent infinite loops when the planner keeps inserting
+# new actions.  Increase if workflows legitimately require more steps.
 MAX_STEPS = 20
 
 

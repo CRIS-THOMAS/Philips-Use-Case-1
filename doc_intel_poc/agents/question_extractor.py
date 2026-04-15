@@ -9,26 +9,32 @@ from doc_intel_poc.models import WorkflowState
 class QuestionExtractorAgent(Agent):
     name = "question_extractor"
 
-    STARTER_PATTERN = re.compile(
-        r"^(what|why|how|when|where|which|who|is|are|can|could|should|would|do|does|did)\\b",
-        flags=re.IGNORECASE,
+    # Match sentences that end with '?' — the only reliable question marker.
+    _QUESTION_RE = re.compile(
+        r"([A-Z][^?.!]*\?)",
+        flags=re.MULTILINE,
     )
+
+    # Heuristic filters to ignore noisy fragments
+    _MIN_LENGTH = 10
+    _CODE_BLOCK_RE = re.compile(r"[{}<>=/;]")
 
     def run(self, state: WorkflowState) -> None:
         text = state.combined_text or ""
         extracted: list[str] = []
 
-        # Direct questions ending with a question mark.
-        by_qmark = re.findall(r"([^\\n?.!][^\\n?]{2,}\\?)", text)
-        extracted.extend(q.strip() for q in by_qmark)
+        for match in self._QUESTION_RE.finditer(text):
+            candidate = " ".join(match.group(1).split()).strip()
 
-        # Question-like lines that might not have a trailing '?'.
-        for line in text.splitlines():
-            clean = " ".join(line.split()).strip()
-            if len(clean) < 3:
+            # Skip very short fragments
+            if len(candidate) < self._MIN_LENGTH:
                 continue
-            if self.STARTER_PATTERN.search(clean):
-                extracted.append(clean)
+
+            # Skip code-like or noisy fragments
+            if self._CODE_BLOCK_RE.search(candidate):
+                continue
+
+            extracted.append(candidate)
 
         state.questions = self._dedupe(extracted)
 

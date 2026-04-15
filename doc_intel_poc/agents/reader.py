@@ -7,6 +7,7 @@ import pdfplumber
 
 from doc_intel_poc.agents.base import Agent
 from doc_intel_poc.models import DocumentContent, WorkflowState
+from doc_intel_poc.text_utils import clean_text
 
 
 class ReaderAgent(Agent):
@@ -24,7 +25,7 @@ class ReaderAgent(Agent):
             suffix = resolved.suffix.lower()
             try:
                 if suffix == ".pdf":
-                    text = self._read_pdf(resolved)
+                    text = clean_text(self._read_pdf(resolved))
                     docs.append(
                         DocumentContent(
                             path=str(resolved),
@@ -33,7 +34,7 @@ class ReaderAgent(Agent):
                         )
                     )
                 elif suffix in {".xlsx", ".xls", ".csv"}:
-                    text = self._read_excel_or_csv(resolved)
+                    text = clean_text(self._read_excel_or_csv(resolved))
                     docs.append(
                         DocumentContent(
                             path=str(resolved),

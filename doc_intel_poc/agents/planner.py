@@ -26,14 +26,12 @@ class PlannerAgent:
         wants_questions = state.options.get("extract_questions", True)
         already_extracted = "question_extractor" in completed
         if wants_questions and not already_extracted:
-            score = int(state.analysis.get("question_candidate_score", 0))
-            if score >= 0:
-                self._trace(
-                    state,
-                    "question_extractor",
-                    "Question extraction enabled and analysis completed.",
-                )
-                return "question_extractor"
+            self._trace(
+                state,
+                "question_extractor",
+                "Question extraction enabled and analysis completed.",
+            )
+            return "question_extractor"
 
         if "summarizer" not in completed:
             self._trace(state, "summarizer", "Produce final human-readable summary.")

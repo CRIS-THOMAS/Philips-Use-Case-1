@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import sys
 from pathlib import Path
+from typing import TextIO
 
 from doc_intel_poc.agents import (
     AnalyzerAgent,
@@ -127,23 +128,23 @@ class DocumentIntelligenceWorkflow:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def print_trace(state: WorkflowState, file: object = None) -> None:
+    def print_trace(state: WorkflowState, file: TextIO | None = None) -> None:
         """Pretty-print the execution trace to *file* (default: stdout)."""
         out = file or sys.stdout
-        print("\n╔══════════════════════════════════════╗", file=out)  # type: ignore[arg-type]
-        print("║       EXECUTION TRACE                ║", file=out)  # type: ignore[arg-type]
-        print("╚══════════════════════════════════════╝\n", file=out)  # type: ignore[arg-type]
+        print("\n╔══════════════════════════════════════╗", file=out)
+        print("║       EXECUTION TRACE                ║", file=out)
+        print("╚══════════════════════════════════════╝\n", file=out)
 
         for entry in state.execution_trace:
             status = "✓" if entry.error is None else "✗"
-            print(f"  Step {entry.step} [{status}] {entry.action}", file=out)  # type: ignore[arg-type]
-            print(f"    Reason : {entry.reason}", file=out)  # type: ignore[arg-type]
-            print(f"    Output : {entry.output_summary}", file=out)  # type: ignore[arg-type]
-            print(f"    Confidence: {entry.confidence:.2f}", file=out)  # type: ignore[arg-type]
+            print(f"  Step {entry.step} [{status}] {entry.action}", file=out)
+            print(f"    Reason : {entry.reason}", file=out)
+            print(f"    Output : {entry.output_summary}", file=out)
+            print(f"    Confidence: {entry.confidence:.2f}", file=out)
             if entry.error:
-                print(f"    Error  : {entry.error}", file=out)  # type: ignore[arg-type]
-            print(file=out)  # type: ignore[arg-type]
+                print(f"    Error  : {entry.error}", file=out)
+            print(file=out)
 
         if state.plan:
-            print("  Plan goal :", state.plan.goal, file=out)  # type: ignore[arg-type]
-            print("  Plan revisions:", state.plan.revision, file=out)  # type: ignore[arg-type]
+            print("  Plan goal :", state.plan.goal, file=out)
+            print("  Plan revisions:", state.plan.revision, file=out)

@@ -27,6 +27,7 @@ class LLMClient:
 
     def __init__(self) -> None:
         self.enabled = False
+        self.model = os.environ.get("OPENAI_MODEL", "gpt-3.5-turbo")
         api_key = os.environ.get("OPENAI_API_KEY", "")
         if api_key:
             try:
@@ -66,7 +67,7 @@ class LLMClient:
 
         try:
             response = self._client.chat.completions.create(
-                model="gpt-3.5-turbo",
+                model=self.model,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.2,
                 max_tokens=512,

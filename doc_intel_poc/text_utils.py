@@ -21,7 +21,7 @@ def clean_text(raw: str) -> str:
     # 1. Strip non-printable / control characters except newline and tab
     text = "".join(
         ch for ch in raw
-        if ch in ("\n", "\t") or unicodedata.category(ch)[0] not in ("C",)
+        if ch in ("\n", "\t") or unicodedata.category(ch)[0] != "C"
     )
 
     # 2. Rejoin hyphenated line breaks  (e.g. "exam-\nple" → "example")
@@ -45,7 +45,7 @@ def clean_text(raw: str) -> str:
 
 def count_words(text: str) -> int:
     """Count real words using regex-based tokenization."""
-    return len(re.findall(r"\b[a-zA-Z0-9]+(?:['-][a-zA-Z0-9]+)*\b", text))
+    return sum(1 for _ in re.finditer(r"\b[a-zA-Z0-9]+(?:['-][a-zA-Z0-9]+)*\b", text))
 
 
 def count_sentences(text: str) -> int:

@@ -20,7 +20,7 @@ class SummarizerAgent(Agent):
     }
 
     # Lines that look like internal markers, not document content.
-    _MARKER_RE = re.compile(r"^\[?SOURCE:|^---\s*(PDF Page|Sheet:)")
+    _MARKER_RE = re.compile(r"^(\[?SOURCE:|---\s*(PDF Page|Sheet:))")
 
     def run(self, state: WorkflowState) -> None:
         if not state.documents:

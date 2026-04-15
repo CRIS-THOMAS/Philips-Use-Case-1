@@ -4,11 +4,12 @@ import re
 from collections import Counter
 
 from doc_intel_poc.agents.base import Agent
-from doc_intel_poc.models import WorkflowState
+from doc_intel_poc.models import ToolResult, WorkflowState
 
 
 class SummarizerAgent(Agent):
     name = "summarizer"
+    description = "Produces a human-readable summary from analysis, keywords, and questions."
 
     STOPWORDS = {
         "the",
@@ -42,10 +43,10 @@ class SummarizerAgent(Agent):
         "but",
     }
 
-    def run(self, state: WorkflowState) -> None:
+    def run(self, state: WorkflowState) -> ToolResult:
         if not state.documents:
             state.summary = "No readable content found in the provided files."
-            return
+            return ToolResult(result=state.summary, confidence=0.3)
 
         lines: list[str] = []
         analysis = state.analysis or {}
@@ -62,9 +63,13 @@ class SummarizerAgent(Agent):
         if source_breakdown:
             lines.append(f"Source breakdown: {source_breakdown}.")
 
-        top_terms = self._top_terms(state.combined_text, top_n=8)
-        if top_terms:
-            lines.append("Top recurring terms: " + ", ".join(top_terms) + ".")
+        # Prefer extracted keywords if available, else compute on the fly
+        if state.keywords:
+            lines.append("Key topics: " + ", ".join(state.keywords[:10]) + ".")
+        else:
+            top_terms = self._top_terms(state.combined_text, top_n=8)
+            if top_terms:
+                lines.append("Top recurring terms: " + ", ".join(top_terms) + ".")
 
         preview = self._high_signal_lines(state.combined_text, max_lines=4)
         if preview:
@@ -73,10 +78,17 @@ class SummarizerAgent(Agent):
         question_count = len(state.questions)
         lines.append(f"Detected {question_count} question(s) in total.")
 
+        # Include multi-doc insights if present
+        if state.multi_doc_insights:
+            common = state.multi_doc_insights.get("common_themes", [])
+            if common:
+                lines.append("Common themes across documents: " + ", ".join(common) + ".")
+
         state.summary = "\n".join(lines)
+        return ToolResult(result=state.summary, confidence=0.9)
 
     def _top_terms(self, text: str, top_n: int) -> list[str]:
-        tokens = re.findall(r"\\b[a-zA-Z][a-zA-Z-]{2,}\\b", text.lower())
+        tokens = re.findall(r"\b[a-zA-Z][a-zA-Z-]{2,}\b", text.lower())
         filtered = [tok for tok in tokens if tok not in self.STOPWORDS]
         counts = Counter(filtered)
         return [term for term, _ in counts.most_common(top_n)]

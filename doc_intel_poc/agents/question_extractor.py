@@ -3,23 +3,29 @@ from __future__ import annotations
 import re
 
 from doc_intel_poc.agents.base import Agent
-from doc_intel_poc.models import WorkflowState
+from doc_intel_poc.models import ToolResult, WorkflowState
 
 
 class QuestionExtractorAgent(Agent):
     name = "question_extractor"
+    description = "Extracts questions from combined document text."
 
     STARTER_PATTERN = re.compile(
-        r"^(what|why|how|when|where|which|who|is|are|can|could|should|would|do|does|did)\\b",
+        r"^(what|why|how|when|where|which|who|is|are|can|could|should|would|do|does|did)\b",
         flags=re.IGNORECASE,
     )
 
-    def run(self, state: WorkflowState) -> None:
+    def run(self, state: WorkflowState) -> ToolResult:
         text = state.combined_text or ""
+        if not text.strip():
+            return ToolResult(
+                result=None, confidence=0.0, error="No text to extract questions from."
+            )
+
         extracted: list[str] = []
 
         # Direct questions ending with a question mark.
-        by_qmark = re.findall(r"([^\\n?.!][^\\n?]{2,}\\?)", text)
+        by_qmark = re.findall(r"([^\n?.!][^\n?]{2,}\?)", text)
         extracted.extend(q.strip() for q in by_qmark)
 
         # Question-like lines that might not have a trailing '?'.
@@ -31,6 +37,12 @@ class QuestionExtractorAgent(Agent):
                 extracted.append(clean)
 
         state.questions = self._dedupe(extracted)
+
+        confidence = min(1.0, len(state.questions) / max(1, len(state.documents)))
+        return ToolResult(
+            result=f"Extracted {len(state.questions)} question(s)",
+            confidence=confidence,
+        )
 
     @staticmethod
     def _dedupe(items: list[str]) -> list[str]:

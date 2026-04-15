@@ -41,6 +41,24 @@ class ReaderAgent(Agent):
                             content=text,
                         )
                     )
+                elif suffix == ".txt":
+                    text = resolved.read_text(encoding="utf-8", errors="replace")
+                    docs.append(
+                        DocumentContent(
+                            path=str(resolved),
+                            source_type="txt",
+                            content=text,
+                        )
+                    )
+                elif suffix == ".docx":
+                    text = self._read_docx(resolved)
+                    docs.append(
+                        DocumentContent(
+                            path=str(resolved),
+                            source_type="docx",
+                            content=text,
+                        )
+                    )
                 else:
                     state.errors.append(f"Unsupported file type: {resolved}")
             except Exception as exc:  # pragma: no cover - safety net
@@ -71,6 +89,19 @@ class ReaderAgent(Agent):
         for sheet_name, df in sheets.items():
             rendered.append(ReaderAgent._format_sheet(sheet_name, df))
         return "\n\n".join(rendered)
+
+    @staticmethod
+    def _read_docx(path: Path) -> str:
+        try:
+            import docx  # imported as 'docx' (package: python-docx)  # noqa: PLC0415
+        except ImportError:  # pragma: no cover
+            raise ImportError(
+                "python-docx is required to read .docx files. "
+                "Install it with: pip install python-docx"
+            )
+        doc = docx.Document(str(path))
+        paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
+        return "\n".join(paragraphs)
 
     @staticmethod
     def _format_sheet(sheet_name: str, df: pd.DataFrame, row_limit: int = 120) -> str:

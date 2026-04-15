@@ -1,53 +1,63 @@
 from __future__ import annotations
 
+import logging
 from pathlib import Path
+from typing import Any
 
-from doc_intel_poc.agents import (
-    AnalyzerAgent,
-    PlannerAgent,
-    QuestionExtractorAgent,
-    ReaderAgent,
-    SummarizerAgent,
+from doc_intel_poc.executor import Executor
+from doc_intel_poc.planner import Planner
+from doc_intel_poc.registry import ToolRegistry
+from doc_intel_poc.tools import (
+    analyze_text,
+    extract_questions,
+    read_documents,
+    summarize,
 )
-from doc_intel_poc.models import WorkflowState
+
+logger = logging.getLogger(__name__)
+
+
+def build_default_registry() -> ToolRegistry:
+    """Create a :class:`ToolRegistry` pre-loaded with the standard tools."""
+    registry = ToolRegistry()
+    registry.register("read_documents", read_documents)
+    registry.register("analyze_text", analyze_text)
+    registry.register("extract_questions", extract_questions)
+    registry.register("summarize", summarize)
+    return registry
 
 
 class DocumentIntelligenceWorkflow:
-    """Coordinator that executes whichever agent the planner selects next."""
+    """Coordinator that uses a Planner + Executor to process documents."""
 
-    def __init__(self) -> None:
-        self.planner = PlannerAgent()
-        self.agents = {
-            "reader": ReaderAgent(),
-            "analyzer": AnalyzerAgent(),
-            "question_extractor": QuestionExtractorAgent(),
-            "summarizer": SummarizerAgent(),
+    def __init__(self, registry: ToolRegistry | None = None) -> None:
+        self.registry = registry or build_default_registry()
+        self.planner = Planner()
+        self.executor = Executor(self.registry, self.planner)
+
+    def run(
+        self,
+        input_paths: list[Path],
+        extract_questions: bool = True,
+    ) -> dict[str, Any]:
+        state: dict[str, Any] = {
+            "input_paths": input_paths,
+            "options": {"extract_questions": extract_questions},
+            "documents": [],
+            "combined_text": "",
+            "analysis": {},
+            "questions": [],
+            "summary": "",
+            "completed_actions": [],
+            "execution_log": [],
+            "errors": [],
         }
 
-    def run(self, input_paths: list[Path], extract_questions: bool = True) -> WorkflowState:
-        state = WorkflowState(
-            input_paths=input_paths,
-            options={"extract_questions": extract_questions},
-        )
+        # Ask planner to generate the initial plan.
+        state["plan"] = self.planner.generate_plan(state)
+        logger.info("Initial plan: %s", state["plan"])
 
-        max_steps = 20
-        for _ in range(max_steps):
-            next_agent = self.planner.decide_next(state)
-            if next_agent is None:
-                break
-
-            agent = self.agents.get(next_agent)
-            if agent is None:
-                state.errors.append(f"Planner requested unknown agent: {next_agent}")
-                break
-
-            try:
-                agent.run(state)
-                state.completed_agents.append(next_agent)
-            except Exception as exc:  # pragma: no cover - safety net
-                state.errors.append(f"Agent '{next_agent}' failed: {exc}")
-                break
-        else:
-            state.errors.append("Workflow stopped after reaching max planner steps.")
+        # Execute the plan.
+        state = self.executor.run(state)
 
         return state

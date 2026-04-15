@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 from pathlib import Path
+from typing import Any
 
 from doc_intel_poc.orchestrator import DocumentIntelligenceWorkflow
 
@@ -27,11 +29,38 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Print structured JSON output.",
     )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Enable verbose logging to show execution trace.",
+    )
     return parser.parse_args()
+
+
+def _state_to_json(state: dict[str, Any]) -> dict[str, Any]:
+    """Produce a JSON-safe version of the shared state dictionary."""
+    docs = state.get("documents", [])
+    return {
+        "inputs": [str(p) for p in state.get("input_paths", [])],
+        "options": state.get("options", {}),
+        "documents": [d.to_dict() for d in docs],
+        "analysis": state.get("analysis", {}),
+        "questions": state.get("questions", []),
+        "summary": state.get("summary", ""),
+        "completed_actions": state.get("completed_actions", []),
+        "execution_log": state.get("execution_log", []),
+        "errors": state.get("errors", []),
+    }
 
 
 def main() -> None:
     args = parse_args()
+
+    logging.basicConfig(
+        level=logging.DEBUG if args.verbose else logging.WARNING,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    )
+
     input_paths = [Path(p) for p in args.input]
 
     workflow = DocumentIntelligenceWorkflow()
@@ -41,24 +70,26 @@ def main() -> None:
     )
 
     if args.json:
-        print(json.dumps(state.to_dict(), indent=2))
+        print(json.dumps(_state_to_json(state), indent=2))
         return
 
     print("=== SUMMARY ===")
-    print(state.summary or "No summary generated.")
+    print(state.get("summary") or "No summary generated.")
     print()
 
     print("=== QUESTIONS ===")
-    if state.questions:
-        for i, q in enumerate(state.questions, start=1):
+    questions = state.get("questions", [])
+    if questions:
+        for i, q in enumerate(questions, start=1):
             print(f"{i}. {q}")
     else:
         print("No questions found.")
 
-    if state.errors:
+    errors = state.get("errors", [])
+    if errors:
         print()
         print("=== ERRORS ===")
-        for err in state.errors:
+        for err in errors:
             print(f"- {err}")
 
 

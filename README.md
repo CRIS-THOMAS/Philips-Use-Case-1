@@ -11,18 +11,41 @@ Simple, modular proof-of-concept for document intelligence similar to PDF.ai.
 - Produces:
   1. Summary
   2. Extracted questions (if present)
-- Uses modular agents with planner-driven execution:
-  - Planner
-  - Reader
-  - Analyzer
-  - Question extractor
-  - Summarizer
 
-## Architecture
+## Architecture — Dynamic Agent System
 
-- `doc_intel_poc/agents/planner.py` decides which agent runs next from shared state.
-- `doc_intel_poc/orchestrator.py` loops: ask planner -> dispatch selected agent.
-- No fixed hardcoded linear pipeline in `main.py`.
+The project uses a **planner-driven execution loop** instead of a hardcoded
+pipeline:
+
+1. **Planner** (`doc_intel_poc/planner.py`) — inspects the shared state
+   (input paths, options, completed actions) and generates a list of action
+   names at runtime. After every step the planner can *revise* the remaining
+   plan (insert, remove, or reorder actions).
+2. **Tool Registry** (`doc_intel_poc/registry.py`) — a dictionary that maps
+   action names to plain Python functions. New tools can be registered at any
+   time.
+3. **Executor** (`doc_intel_poc/executor.py`) — iterates over the
+   planner-generated plan, looks up each action in the registry, executes it,
+   and asks the planner to revise the remainder of the plan.
+4. **Tools** (`doc_intel_poc/tools.py`) — each tool is a standalone function
+   with signature `(state: dict) -> None`. Tools read from and write to a
+   shared state dictionary.
+5. **Orchestrator** (`doc_intel_poc/orchestrator.py`) — thin wrapper that
+   wires the planner, registry, and executor together and exposes a
+   `run()` method.
+
+Key properties:
+
+- **No hardcoded sequence** — the planner decides which actions run and in
+  what order based on the current state.
+- **Shared state dictionary** — every tool reads/writes the same `dict`,
+  making data flow explicit.
+- **Mid-execution plan revision** — after each step the planner can adapt
+  the remaining plan (e.g., skip question extraction when the analysis finds
+  no candidates). Tools can also request insertions via
+  `state["_insert_actions"]`.
+- **Logging** — run with `--verbose` to see a full execution trace of every
+  action.
 
 ## Setup
 
@@ -35,19 +58,25 @@ pip install -r requirements.txt
 ## Run
 
 ```bash
-python main.py --input path\\to\\doc.pdf path\\to\\sheet.xlsx
+python main.py --input path/to/doc.pdf path/to/sheet.xlsx
 ```
 
-Optional JSON output:
+Verbose logging (execution trace):
 
 ```bash
-python main.py --input path\\to\\doc.pdf path\\to\\sheet.xlsx --json
+python main.py --input path/to/doc.pdf --verbose
+```
+
+JSON output:
+
+```bash
+python main.py --input path/to/doc.pdf path/to/sheet.xlsx --json
 ```
 
 Disable question extraction:
 
 ```bash
-python main.py --input path\\to\\doc.pdf path\\to\\sheet.xlsx --no-questions
+python main.py --input path/to/doc.pdf path/to/sheet.xlsx --no-questions
 ```
 
 ## Sample Run (example)
@@ -55,7 +84,7 @@ python main.py --input path\\to\\doc.pdf path\\to\\sheet.xlsx --no-questions
 Command:
 
 ```bash
-python main.py --input samples\\meeting_notes.pdf samples\\qna.xlsx
+python main.py --input samples/meeting_notes.pdf samples/qna.xlsx
 ```
 
 Example output:
@@ -80,4 +109,4 @@ Detected 5 question(s) in total.
 
 - This PoC is deterministic and heuristic-based (no LLM dependency).
 - It is meant for demonstration and extension.
-- To improve quality, replace analyzer/summarizer logic with an LLM-backed component while keeping the same agent interfaces.
+- To improve quality, replace tool logic with an LLM-backed component while keeping the same function signatures.

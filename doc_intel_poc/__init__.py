@@ -1,1 +1,1 @@
-"""Document intelligence PoC package."""
+"""Document intelligence PoC — dynamic agent system."""

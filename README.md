@@ -32,6 +32,21 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
+## Streamlit UI
+
+A browser-based interface is available as an alternative to the CLI.
+
+```bash
+streamlit run ui.py
+```
+
+Open the URL shown in the terminal (usually `http://localhost:8501`).
+
+- Upload any supported document (PDF, Excel, CSV, TXT, DOCX) — no hardcoded paths.
+- Optionally describe your goal in the text box.
+- Click **🚀 Run Agent** to analyse the documents.
+- Results include a summary, extracted questions, keyword tags, per-document stats, and an expandable execution trace.
+
 ## Run
 
 ```bash
